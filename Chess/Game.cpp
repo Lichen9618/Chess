@@ -38,37 +38,24 @@ namespace Chess
 		board.add_piece(Position( 'A'+4 , '1'+7 ) , 'k' );
 	}
 
-	void Game::make_move(const Position& start, const Position& end) {		
+	bool Game::can_move(const Position& start, const Position& end) const{
 		const Piece* startP = board(start);
 		const Piece* endP = board(end);
 		if (!startP) {
-			throw new Exception("start is empty");
-			return;
+			return false;
 		}
-		if ((startP->is_white() ^ this->is_white_turn)) {
-			throw new Exception("cant move op piece");
-			return;
-		}		
 		if (endP) {
-			if (!(startP->is_white() ^ endP->is_white())) {
-				throw new Exception("cant move to self piece");
-				return;
-			}
 			if (!startP->legal_capture_shape(start, end)) {
-				throw new Exception("illegal capture shape");
-				return;
+				return false;
 			}
 		}
 		else {
 			if (!startP->legal_move_shape(start, end)) {
-				throw new Exception("illegal move shape");
-				return;
+				return false;
 			}
 		}
 		if (startP->to_ascii() == 'n' || startP->to_ascii() == 'N') {
-
-			board.add_piece(start, 'x');
-			board.add_piece(end, startP->to_ascii());
+			return true;
 		}
 		else {
 			int verWay = 0;
@@ -84,17 +71,35 @@ namespace Chess
 				current.first = current.first + verWay;
 				current.second = current.second + horDis;
 				if (current == end) {
-					board.add_piece(start, 'x');
-					board.add_piece(end, startP->to_ascii());
 					break;
 				}
 				if (board(current)) {
-					throw new Exception("piece in path");
-					return;
+					return false;
 				}
 			}
 		}
-		this->is_white_turn = !this->is_white_turn;
+		return true;
+	}
+
+	void Game::make_move(const Position& start, const Position& end) {		
+		const Piece* startP = board(start);
+		const Piece* endP = board(end);
+		if ((startP->is_white() ^ this->is_white_turn)) {
+			throw new Chess::Exception("Not your turn");
+			return;
+		}
+		if (!(startP->is_white() ^ endP->is_white())) {
+			throw new Chess::Exception("your piece at end");
+			return;
+		}
+		if (can_move(start, end)) {
+			board.add_piece(start, 'x');
+			board.add_piece(end, startP->to_ascii());
+			this->is_white_turn = !this->is_white_turn;
+		}
+		else {
+			throw new Chess::Exception("move failed");
+		}
 	}
 
 	bool Game::in_check(const bool& white) const {
@@ -123,8 +128,8 @@ namespace Chess
 			for (int j = 0; j < 8; j++) {
 				const Piece* p = board(Position('A' + j, '1' + i));
 				if (p) {
-					if (!(p->is_white()) && white) {
-						if ( p->legal_move_shape((Position('A' + j, '1' + i)), kingPosition)) {
+					if (p->is_white() ^ white) {
+						if (can_move(Position('A' + j, '1' + i), kingPosition)) {
 							return true;
 						}
 					}
@@ -136,15 +141,16 @@ namespace Chess
 
 
 	bool Game::in_mate(const bool& white) const {
-		if (!in_check(white)) {
-			return false;
-		}
+		if (!in_check(white)) return false;
 		Position kingPosition;
 		if (white) {
 			for (int i = 7; i >= 0; i--) {
 				for (int j = 0; j < 8; j++) {
-					if ('K' == board(Position('A' + j, '1' + i))->to_ascii()) {
-						kingPosition = { Position('A' + j, '1' + i) } ;
+					const Piece* p = board(Position('A' + j, '1' + i));
+					if (p) {
+						if ('K' == p->to_ascii()) {
+							kingPosition = { Position('A' + j, '1' + i) };
+						}
 					}
 				}
 			}
@@ -152,44 +158,112 @@ namespace Chess
 		else {
 			for (int i = 7; i >= 0; i--) {
 				for (int j = 0; j < 8; j++) {
-					if ('k' == board(Position('A' + j, '1' + i))->to_ascii()) {
-						kingPosition = Position('A' + j, '1' + i);
+					const Piece* p = board(Position('A' + j, '1' + i));
+					if (p) {
+						if ('k' == p->to_ascii()) {
+							kingPosition = { Position('A' + j, '1' + i) };
+						}
 					}
 				}
 			}
 		}
 		bool in_mate = true;
 		for (int i = -1; i <= 1; i++){
-			for (int j = 0; j <= 1 ;j++){
-				Position around = Position(kingPosition.first + i, kingPosition.second + j);
-				if (NULL != board(around) && (board(around)->is_white()&&white)) {
-					bool isSafePosition = true;
-					for (int i = 7; i >= 0; i--) {
-						for (int j = 0; j < 8; j++) {
-							if (!(board(Position('A' + j, '1' + i))->is_white()) && white) {
-								if ((board(Position('A' + j, '1' + i)))->legal_move_shape((Position('A' + j, '1' + i)), around)) {
-
-									isSafePosition = false;
-									break;
-								}
-								else {
-									continue;
+			for (int j = -1; j <= 1 ;j++){
+				if (kingPosition.first + i >= 'A' && kingPosition.second + j >= '1') {
+					Position around = Position(kingPosition.first + i, kingPosition.second + j);
+					if (around.first > 'H' || around.first < 'A' || around.second > '8' || around.second < '1') {
+						continue;
+					}
+					if (!board(around) || board(around)->is_white() ^ white) {
+						bool isSafePosition = true;
+						for (int i = 7; i >= 0; i--) {
+							for (int j = 0; j < 8; j++) {
+								const Piece* p = board(Position('A' + j, '1' + i));
+								if (p) {
+									if (p->is_white() ^ white) {
+										if (can_move(Position('A' + j, '1' + i), around)) {
+											isSafePosition = false;
+										}
+									}
 								}
 							}
+						}
+						if (isSafePosition) {
+							in_mate = false;
+						}
+					}
+				}				
+			}
+		}
+		return in_mate;
+	}
+
+
+	bool Game::in_stalemate(const bool& white) const {
+		Position kingPosition;
+		bool in_stalemate = true;
+		if (white) {
+			for (int i = 7; i >= 0; i--) {
+				for (int j = 0; j < 8; j++) {
+					const Piece* p = board(Position('A' + j, '1' + i));
+					if (p) {
+						if ('K' == p->to_ascii()) {
+							kingPosition = { Position('A' + j, '1' + i) };
+						}
+						else if(p->is_white()){
+							return false;
 						}
 					}
 				}
 			}
 		}
-		return false;
-	}
+		else {
+			for (int i = 7; i >= 0; i--) {
+				for (int j = 0; j < 8; j++) {
+					const Piece* p = board(Position('A' + j, '1' + i));
+					if (p) {
+						if ('k' == p->to_ascii()) {
+							kingPosition = { Position('A' + j, '1' + i) };
+						}
+						else if (!p->is_white()) {
+							return false;
+						}
+					}
+				}
+			}
+		}
 
-
-	bool Game::in_stalemate(const bool& white) const {
-		/////////////////////////
-		// [REPLACE THIS STUB] //
-		/////////////////////////
-		return false;
+		
+		for (int i = -1; i <= 1; i++) {
+			for (int j = 0; j <= 1; j++) {
+				if (kingPosition.first + i >= 'A' && kingPosition.second + j >= '1') {
+					Position around = Position(kingPosition.first + i, kingPosition.second + j);
+					if (around.first > 'H' || around.first < 'A' || around.second > '8' || around.second < '1' || around == kingPosition) {
+						continue;
+					}
+					if (!board(around) || board(around)->is_white() ^ white) {
+						bool isSafePosition = true;
+						for (int i = 7; i >= 0; i--) {
+							for (int j = 0; j < 8; j++) {
+								const Piece* p = board(Position('A' + j, '1' + i));
+								if (p) {
+									if (p->is_white() ^ white) {
+										if (can_move(Position('A' + j, '1' + i), around)) {
+											isSafePosition = false;
+										}
+									}
+								}
+							}
+						}
+						if (isSafePosition) {
+							in_stalemate = false;
+						}
+					}
+				}
+			}
+		}
+		return in_stalemate;
 	}
 
 	std::istream& operator>> (std::istream& is, Game& game) {
