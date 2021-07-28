@@ -24,22 +24,17 @@ namespace Chess
 	}
   
 	void Board::add_piece(const Position& position, const char& piece_designator) {
-		if (occ[position] == NULL) {
 			occ[position] = create_piece(piece_designator);
-		}
-		else {
-			throw new Exception("add piece failed");
-		}		
 	}
 
     void Board::display() const {		
-		for (int i = 0; i < 8; i++) {
+		for (int i = 7; i >= 0; i--) {
 			for (int j = 0; j < 8; j++) {
 				if (NULL != this->operator()(Position('A' + j, '1' + i))) {
 					std::cout << occ.at(Position('A' + j, '1' + i))->to_ascii();
 				}
 				else {
-					std::cout << " ";
+					std::cout << "-";
 				}
 			}
 			std::cout << std::endl;
@@ -47,10 +42,21 @@ namespace Chess
 	}
 
 	bool Board::has_valid_kings() const {
-		/////////////////////////
-		// [REPLACE THIS STUB] //
-		/////////////////////////
-		return true;
+		bool whiteKing = false;
+		bool blackKing = false;
+		for (int i = 0; i < 8; i++) {
+			for (int j = 0; j < 8; j++) {
+				if (this->operator()(Position('A' + j, '1' + i))) {
+					if ('K' == this->operator()(Position('A' + j, '1' + i))->to_ascii()) {
+						whiteKing = true;
+					}
+					else if ('k' == this->operator()(Position('A' + j, '1' + i))->to_ascii()) {
+						blackKing = true;
+					}
+				}
+			}
+		}
+		return (whiteKing && blackKing);
 	}
 
     /////////////////////////////////////

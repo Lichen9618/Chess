@@ -89,15 +89,20 @@ int main(int argc, char* argv[]) {
 				// Load a game from a file
 		// TODO: add try catch blocks to handle any file i/o and gmae loading problem
 		// exit the program with return code -1 if an exception is caught here
-				std::string argument;
-				std::cin >> argument;
-				std::ifstream ifs;
-				ifs.open(argument);
-				ifs >> game;
-				ifs.close();
-				// Check that the game is valid
-				assert(game.is_valid_game());
-				break;
+				try {
+					std::string argument;
+					std::cin >> argument;
+					std::ifstream ifs;
+					ifs.open(argument);
+					ifs >> game;
+					ifs.close();
+					// Check that the game is valid
+					assert(game.is_valid_game());
+					break;
+				}
+				catch (std::exception e) {
+					return -1;
+				}
 			}
 			case 'S': case 's': {
 				// Write a game to a file
@@ -122,8 +127,12 @@ int main(int argc, char* argv[]) {
 				}
 				else {
 					// TODO: add try catch blocks to recover from illegral moves
-					game.make_move(std::make_pair(argument[0], argument[1]),
-						std::make_pair(argument[2], argument[3]));
+					try {
+						game.make_move(std::make_pair(argument[0], argument[1]), std::make_pair(argument[2], argument[3]));
+					}
+					catch (Chess::Exception e) {
+						std::cout << e.what();
+					}					
 				}
 				break;
 			}
