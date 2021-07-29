@@ -100,6 +100,15 @@ namespace Chess
 		else {
 			throw new Chess::Exception("move failed");
 		}
+		const Piece* checkPromotion = board(end);
+		if (checkPromotion) {
+			if (checkPromotion->to_ascii() == 'k'&& end.second == '1') {
+				board.add_piece(end, 'q');
+			}
+			if (checkPromotion->to_ascii() == 'K' && end.second == '8') {
+				board.add_piece(end, 'Q');
+			}
+		}		
 	}
 
 	bool Game::in_check(const bool& white) const {
